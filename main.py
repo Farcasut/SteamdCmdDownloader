@@ -4,7 +4,7 @@ import subprocess
 import re
 import requests
 path:string = "./steamcmd.exe"
-
+removeExcess= r'\d'
 def startSubprocess(gameID, modID, gameName):
     steamcmd_params = (
         path,
@@ -22,9 +22,15 @@ def getGameData(link):
     htmlSteam =  requests.get(link)
     regexGameID = "(https:\/\/steamcommunity\.com\/app\/[0-9]+) ?"
     regexGameName="<div class=\"apphub_AppName ellipsis\">.*<.div>"
-
     linkHomePage = re.search(regexGameID, htmlSteam.text)[0]
-    return [linkHomePage[linkHomePage.find("/app/")+5:], re.search(regexGameName, htmlSteam.text)[0][37:-6]]
+    modID=0;
+    match = re.search(removeExcess, link[::-1])
+    if match:
+        modID=link[link.find('?id=')+4:len(link)-match.start()]
+    else:
+        modID=link[link.find('?id=')+4:]
+
+    return [linkHomePage[linkHomePage.find("/app/")+5:], re.search(regexGameName, htmlSteam.text)[0][37:-6], modID]
 
 def process_link():
     print("quit->quit\nchange game ->change\n")
@@ -33,15 +39,23 @@ def process_link():
         if linkWorkShop.upper()=="QUIT":
             return;
 
-        [gameID,gameName]= getGameData(linkWorkShop)
-        modID = linkWorkShop[linkWorkShop.find("?id=")+4:]
+        [gameID,gameName,modID]= getGameData(linkWorkShop)
         startSubprocess(gameID, modID,gameName)
     return;
-
+def process_file(fileName):
+    with open(fileName, 'r') as file:
+        for i in file.readlines():
+           [gameID, gameName,modID] = getGameData(i)
+           print(gameID,gameName,modID)
+           startSubprocess(gameID,modID, gameName)
 def main():
-    process_link()
+    mode =  input("Do you want do download from a file or from a link?\nFile/Link\n").upper();
+    if mode=="LINK":
+        process_link()
+    if mode=="FILE":
+        fileName =  input("File name:\n")
+        process_file(fileName)
 
 
 if __name__ == '__main__':
    main()
-
